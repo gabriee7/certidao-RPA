@@ -68,7 +68,8 @@ class PdfDownloader
     {
         $pdfContent = File::get($filePath);
         $cleanCnpj = preg_replace('/[^0-9]/', '', $cnpj);
-        $finalFileName = "CND_Navegantes_{$cleanCnpj}.pdf";
+        $uniqueId = uniqid();
+        $finalFileName = "CND_Navegantes_{$cleanCnpj}_{$uniqueId}.pdf";
         $finalPath = "certidoes/{$finalFileName}";
 
         Storage::disk('local')->put($finalPath, $pdfContent);
