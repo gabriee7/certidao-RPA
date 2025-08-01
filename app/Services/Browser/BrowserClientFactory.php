@@ -21,6 +21,7 @@ class BrowserClientFactory
             '--no-sandbox',
             '--start-maximized',
             '--disable-blink-features=AutomationControlled',
+            '--log-level=3'
         ];
 
         return Client::createChromeClient($driverPath, $chromeOptions);
