@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use App\Services\Browser\BrowserClientFactory;
 use App\Services\Certidao\BethaPortalNavigator;
 use App\Services\Certidao\PdfDownloader;
+use App\Helpers\ValidatorHelper;
 
 class DownloadCertidaoNavegantesCommand extends Command
 {
@@ -45,7 +46,7 @@ class DownloadCertidaoNavegantesCommand extends Command
             $this->error("Ocorreu um erro inesperado: " . $e->getMessage());
             
             if ($client) {
-                $screenshotPath = storage_path('app/public/error_screenshots/error_' 
+                $screenshotPath = storage_path('app/private/error_screenshots/error_' 
                     . preg_replace('/[^0-9]/', '', $cnpj) . '_' . date('Y-m-d_H-i-s') . '.png');
                 $client->takeScreenshot($screenshotPath);
                 $this->comment("Screenshot do erro salvo em: {$screenshotPath}");
