@@ -7,6 +7,7 @@ use Symfony\Component\Panther\Exception;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use RuntimeException;
+use Facebook\WebDriver\Exception\TimeoutException;
 
 class BethaPortalNavigator
 {
@@ -106,14 +107,9 @@ class BethaPortalNavigator
         $this->client->getCrawler()->filter($selectors['cnpj_input'])->sendKeys($this->cnpj);
         $this->client->getCrawler()->filter($selectors['cnpj_submit_button'])->click();
 
-        try {
-            $this->client->waitForVisibility('#mainForm\\:master\\:messageSection\\:error', 5);
-
+        if ($this->waitForVisibilityOrNull('#mainForm\\:master\\:messageSection\\:error', 5)) {
             $errorText = $this->client->getCrawler()->filter('#mainForm\\:master\\:messageSection\\:error')->text();
-            throw new RuntimeException("{$errorText}");
-
-        } catch (TimeoutException $e) {
-            throw $e;
+            throw new \RuntimeException($errorText);
         }
     }
 
@@ -132,5 +128,15 @@ class BethaPortalNavigator
         $this->client->takeScreenshot($path);
 
         throw new RuntimeException("{$message}. Screenshot do erro salvo em: {$path}");
+    }
+
+    private function waitForVisibilityOrNull(string $selector, int $timeout = 5): bool
+    {
+        try {
+            $this->client->waitForVisibility($selector, $timeout);
+            return true;
+        } catch (TimeoutException $e) {
+            return false;
+        }
     }
 }
