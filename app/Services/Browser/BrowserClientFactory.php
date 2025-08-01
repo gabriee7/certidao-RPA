@@ -4,6 +4,7 @@ namespace App\Services\Browser;
 
 use Symfony\Component\Panther\Client;
 use Illuminate\Support\Facades\File;
+use RuntimeException;
 
 class BrowserClientFactory
 {
@@ -12,7 +13,7 @@ class BrowserClientFactory
         $driverPath = base_path(env('CHROMEDRIVER_EXECUTABLE', 'drivers\\chromedriver.exe'));
 
         if (!File::exists($driverPath)) {
-            throw new \RuntimeException("Chromedriver não encontrado em: {$driverPath}. 
+            throw new RuntimeException("Chromedriver não encontrado em: {$driverPath}. 
                 Execute 'vendor\\bin\\bdi detect drivers'.");
         }
 

@@ -5,6 +5,7 @@ namespace App\Services\Certidao;
 use Symfony\Component\Panther\Client;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 class PdfDownloader
 {
@@ -60,7 +61,7 @@ class PdfDownloader
             sleep(1);
         }
 
-        throw new \RuntimeException("O download do PDF não foi concluído na 
+        throw new RuntimeException("O download do PDF não foi concluído na 
             pasta padrão dentro do tempo limite de {$timeout} segundos.");
     }
 

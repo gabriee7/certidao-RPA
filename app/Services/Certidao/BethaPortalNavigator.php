@@ -110,7 +110,7 @@ class BethaPortalNavigator
             $this->client->waitForVisibility('#mainForm\\:master\\:messageSection\\:error', 5);
 
             $errorText = $this->client->getCrawler()->filter('#mainForm\\:master\\:messageSection\\:error')->text();
-            throw new \RuntimeException("{$errorText}");
+            throw new RuntimeException("{$errorText}");
 
         } catch (TimeoutException $e) {
             throw $e;
