@@ -16,8 +16,15 @@ class DownloadCertidaoNavegantesCommand extends Command
 
     public function handle()
     {
-        $cnpj = $this->argument('cnpj');
-        $this->info("Iniciando a automação para o CNPJ: {$cnpj}");
+        $rawCnpj = $this->argument('cnpj');
+        $cnpj = preg_replace('/\D/', '', $rawCnpj);
+
+        if (!ValidatorHelper::isCnpj($cnpj)) {
+            $this->error("CNPJ inválido: {$rawCnpj}");
+            return Command::FAILURE;
+        }
+
+        $this->info("Iniciando automação para o CNPJ: {$cnpj}");
 
         $client = null;
         try {
