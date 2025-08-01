@@ -16,7 +16,7 @@ return [
         'download_button' => '#download',
     ],
     'values' => [
-        'state' => env('BETHA_STATE_VALUE', '22'),
-        'municipality' => env('BETHA_MUNICIPALITY_VALUE', '177'),
+        'state' => ['22',  'SC - Santa Catarina'],
+        'municipality' => ['177', 'Prefeitura Municipal de Navegantes'],
     ],
 ];

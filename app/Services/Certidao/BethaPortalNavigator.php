@@ -3,11 +3,16 @@
 namespace App\Services\Certidao;
 
 use Symfony\Component\Panther\Client;
+use Symfony\Component\Panther\Exception;
+use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
+use RuntimeException;
 
 class BethaPortalNavigator
 {
     private Client $client;
     private array $config;
+    private string $cnpj;
 
     public function __construct(Client $client)
     {
@@ -17,10 +22,11 @@ class BethaPortalNavigator
 
     public function navigateAndFill(string $cnpj): void
     {
+        $this->cnpj = $cnpj;
         $this->accessMainPage();
         $this->selectEntity();
         $this->navigateToCndForm();
-        $this->fillCnpjAndSubmit($cnpj);
+        $this->fillCnpjAndSubmit();
     }
 
     private function accessMainPage(): void
@@ -33,21 +39,48 @@ class BethaPortalNavigator
         $selectors = $this->config['selectors'];
         $values = $this->config['values'];
 
+        $stateValue = $values['state'][0];
+        $stateLabel = $values['state'][1];
+
+        $municipalityValue = $values['municipality'][0];
+        $municipalityLabel = $values['municipality'][1];
+
         $jsStateSelector = str_replace('\\', '\\\\', $selectors['state']);
         $jsMunicipalitySelector = str_replace('\\', '\\\\', $selectors['municipality']);
 
         $this->client->waitForVisibility($selectors['state']);
-        $this->client->executeScript("document.querySelector('{$jsStateSelector}').value = 
-            '{$values['state']}';");
-        $this->client->executeScript("const s=document.querySelector('{$jsStateSelector}'); 
-            const e=document.createEvent('HTMLEvents'); e.initEvent('change', true, false); s.dispatchEvent(e);");
 
-        $this->client->waitForVisibility($selectors['municipality'] . ' option[value="' 
-            . $values['municipality'] . '"]');
-        $this->client->executeScript("document.querySelector('{$jsMunicipalitySelector}').value = 
-            '{$values['municipality']}';");
-        $this->client->executeScript("const s=document.querySelector('{$jsMunicipalitySelector}'); 
-            const e=document.createEvent('HTMLEvents'); e.initEvent('change', true, false); s.dispatchEvent(e);");
+        $this->client->executeScript("
+            const s = document.querySelector('{$jsStateSelector}');
+            if (s) {
+                s.value = '{$stateValue}';
+                const evt = document.createEvent('HTMLEvents');
+                evt.initEvent('change', true, true);
+                s.dispatchEvent(evt);
+            }
+        ");
+
+        $this->client->waitForVisibility("{$selectors['municipality']} option[value='{$municipalityValue}']");
+
+        $this->client->executeScript("
+            const m = document.querySelector('{$jsMunicipalitySelector}');
+            if (m) {
+                m.value = '{$municipalityValue}';
+                const evt = document.createEvent('HTMLEvents');
+                evt.initEvent('change', true, true);
+                m.dispatchEvent(evt);
+            }
+        ");
+
+        $actualLabel = $this->client->executeScript("
+            const m = document.querySelector('{$jsMunicipalitySelector}');
+            const selected = m.options[m.selectedIndex];
+            return selected ? selected.textContent.trim() : null;
+        ");
+
+        if ($actualLabel !== $municipalityLabel) {
+            $this->takeScreenshotOnError("O município selecionado foi '{$actualLabel}', mas esperava-se '{$municipalityLabel}'");
+        }
 
         $this->client->waitForVisibility($selectors['submit_entity']);
         $this->client->getCrawler()->filter($selectors['submit_entity'])->click();
@@ -61,7 +94,7 @@ class BethaPortalNavigator
             str_contains($n->text(), 'Certidão negativa de contribuinte'))->click();
     }
 
-    private function fillCnpjAndSubmit(string $cnpj): void
+    private function fillCnpjAndSubmit(): void
     {
         $selectors = $this->config['selectors'];
         $jsCnpjInputSelector = str_replace('\\', '\\\\', $selectors['cnpj_input']);
@@ -70,7 +103,34 @@ class BethaPortalNavigator
         $this->client->getCrawler()->filter($selectors['cnpj_mode_button'])->click();
 
         $this->client->waitForVisibility($selectors['cnpj_input']);
-        $this->client->getCrawler()->filter($selectors['cnpj_input'])->sendKeys($cnpj);
+        $this->client->getCrawler()->filter($selectors['cnpj_input'])->sendKeys($this->cnpj);
         $this->client->getCrawler()->filter($selectors['cnpj_submit_button'])->click();
+
+        try {
+            $this->client->waitForVisibility('#mainForm\\:master\\:messageSection\\:error', 5);
+
+            $errorText = $this->client->getCrawler()->filter('#mainForm\\:master\\:messageSection\\:error')->text();
+            throw new \RuntimeException("{$errorText}");
+
+        } catch (TimeoutException $e) {
+            throw $e;
+        }
+    }
+
+    private function takeScreenshotOnError(string $message): void
+    {
+        $cnpj = preg_replace('/\D/', '', $this->cnpj ?? '');
+
+        $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
+        $filename = "error_{$cnpj}_{$timestamp}.png";
+        $path = storage_path("app/private/error_screenshots/{$filename}");
+
+        if (!file_exists(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+
+        $this->client->takeScreenshot($path);
+
+        throw new RuntimeException("{$message}. Screenshot do erro salvo em: {$path}");
     }
 }
